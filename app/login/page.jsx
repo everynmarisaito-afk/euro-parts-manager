@@ -37,9 +37,10 @@ if (userError || !userData.user) {
 }
 
 setError("認証成功：Supabaseへのログインとユーザー確認が完了しました");
-    } catch {
+    } catch (err) {
+      console.error("Login error:", err);
       setError(
-        "ログインできませんでした。メールアドレスとパスワードをご確認ください。"
+        "ログインできませんでした：" + (err?.message || "原因不明のエラー")
       );
     } finally {
       setLoading(false);
@@ -55,7 +56,7 @@ setError("認証成功：Supabaseへのログインとユーザー確認が完�
           在庫・注文管理 スタッフログイン
         </p>
 
-        <form on‍Submit={handleLogin}>
+        <form onSubmit={handleLogin}>
           <label style={styles.label}>
             メールアドレス
           </label>
