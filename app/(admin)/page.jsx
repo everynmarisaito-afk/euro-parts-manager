@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listOrders } from "../../lib/woocommerce";
+import { listOrders, countProducts } from "../../lib/woocommerce";
 
 export const dynamic = "force-dynamic";
 
@@ -12,17 +12,27 @@ async function countOrders(status) {
   }
 }
 
+async function countOutOfStock() {
+  try {
+    return await countProducts({ stock_status: "outofstock" });
+  } catch {
+    return null;
+  }
+}
+
 export default async function DashboardPage() {
-  const [processing, onHold, pending] = await Promise.all([
+  const [processing, onHold, pending, outOfStock] = await Promise.all([
     countOrders("processing"),
     countOrders("on-hold"),
     countOrders("pending"),
+    countOutOfStock(),
   ]);
 
   const stats = [
     { label: "処理中の注文", value: processing, href: "/orders?status=processing" },
     { label: "保留中の注文", value: onHold, href: "/orders?status=on-hold" },
     { label: "支払い待ちの注文", value: pending, href: "/orders?status=pending" },
+    { label: "在庫切れの商品", value: outOfStock, href: "/inventory?stock=outofstock" },
   ];
 
   const connected = stats.some((s) => s.value !== null);
@@ -68,7 +78,7 @@ export default async function DashboardPage() {
       <div className="card" style={{ marginTop: 16 }}>
         <h2 className="card-title">準備中の機能</h2>
         <p style={{ fontSize: 14, color: "#6b7280", margin: 0 }}>
-          在庫不足アラート・売上サマリーは、在庫管理・売上集計の画面ができたあとに追加します。
+          売上サマリーは、売上集計の画面ができたあとに追加します。在庫が少ない商品は「在庫管理」で赤枠表示されます。
         </p>
       </div>
     </>
