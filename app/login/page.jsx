@@ -27,7 +27,16 @@ export default function LoginPage() {
         throw loginError;
       }
 
-      window.location.assign("/");
+      const { data: userData, error: userError } =
+  await supabase.auth.getUser();
+
+if (userError || !userData.user) {
+  setError("認証後のセッション確認に失敗しました: " +
+    (userError?.message || "ユーザー情報なし"));
+  return;
+}
+
+setError("認証成功：Supabaseへのログインとユーザー確認が完了しました");
     } catch {
       setError(
         "ログインできませんでした。メールアドレスとパスワードをご確認ください。"
