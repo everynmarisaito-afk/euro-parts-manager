@@ -29,7 +29,7 @@ export default async function DashboardPage() {
   ]);
 
   const stats = [
-    { label: "処理中の注文", value: processing, href: "/orders?status=processing" },
+    { label: "未発送（処理中）の注文", value: processing, href: "/shipping" },
     { label: "保留中の注文", value: onHold, href: "/orders?status=on-hold" },
     { label: "支払い待ちの注文", value: pending, href: "/orders?status=pending" },
     { label: "在庫切れの商品", value: outOfStock, href: "/inventory?stock=outofstock" },

@@ -349,6 +349,48 @@
   margin-top: 4px;
 }
 
+/* ===== 発送 ===== */
+.ship-card + .ship-card {
+  margin-top: 12px;
+}
+.ship-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ship-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+.ship-note {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: #fffbeb;
+  border-radius: 6px;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+.ship-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f3f4f6;
+}
+.ship-notify {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #374151;
+}
+
 /* ===== スマホ ===== */
 @media (max-width: 800px) {
   .admin-shell {

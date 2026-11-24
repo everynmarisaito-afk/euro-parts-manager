@@ -9,6 +9,7 @@ import {
   addressLines,
 } from "../../../../lib/format";
 import { updateOrderStatus, addStaffNote } from "../actions";
+import { getTracking } from "../../../../lib/shipping";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +69,7 @@ export default async function OrderDetailPage({ params, searchParams }) {
   }
 
   const s = statusInfo(order.status);
+  const tracking = getTracking(order);
   const updateAction = updateOrderStatus.bind(null, order.id);
   const noteAction = addStaffNote.bind(null, order.id);
   const shippingTotal = Number(order.shipping_total) || 0;
@@ -101,6 +103,39 @@ export default async function OrderDetailPage({ params, searchParams }) {
       {sp?.noted && <div className="alert-success">メモを追加しました</div>}
       {typeof sp?.error === "string" && (
         <div className="alert-error">{sp.error}</div>
+      )}
+
+      {tracking && (
+        <div className="card">
+          <h2 className="card-title">発送情報</h2>
+          <dl className="dl">
+            <dt>配送業者</dt>
+            <dd>{tracking.carrierLabel}</dd>
+            <dt>追跡番号</dt>
+            <dd>
+              {tracking.url ? (
+                <a href={tracking.url} target="_blank" rel="noreferrer">
+                  {tracking.number}
+                </a>
+              ) : (
+                tracking.number || "-"
+              )}
+            </dd>
+            <dt>発送日時</dt>
+            <dd>{tracking.shippedAt ? formatDateTime(tracking.shippedAt) : "-"}</dd>
+            <dt>担当</dt>
+            <dd>{tracking.shippedBy || "-"}</dd>
+          </dl>
+        </div>
+      )}
+
+      {order.status === "processing" && !tracking && (
+        <div className="card" style={{ background: "#eff6ff", borderColor: "#bfdbfe" }}>
+          <div style={{ fontSize: 14 }}>
+            この注文は未発送です。追跡番号の登録は{" "}
+            <Link href="/shipping">発送管理</Link> から行えます。
+          </div>
+        </div>
       )}
 
       <div className="card">
