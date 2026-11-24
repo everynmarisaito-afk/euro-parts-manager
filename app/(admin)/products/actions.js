@@ -2,21 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "../../../lib/supabase/server";
+import { requireStaff } from "../../../lib/staff";
 import {
   updateProduct,
   updateVariation,
 } from "../../../lib/woocommerce";
 import { PRODUCT_STATUSES } from "../../../lib/format";
-
-async function requireStaff() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  if (!data?.user) {
-    redirect("/login");
-  }
-  return data.user;
-}
 
 // 戻り先は管理画面内のパスだけ許可する
 function safeReturn(raw, fallback) {

@@ -20,7 +20,8 @@ async function countOutOfStock() {
   }
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }) {
+  const sp = await searchParams;
   const [processing, onHold, pending, outOfStock] = await Promise.all([
     countOrders("processing"),
     countOrders("on-hold"),
@@ -45,6 +46,10 @@ export default async function DashboardPage() {
           <p className="page-sub">輸入車パーツ 在庫・注文管理システム</p>
         </div>
       </div>
+
+      {sp?.forbidden && (
+        <div className="alert-error">その画面は管理者だけが使えます</div>
+      )}
 
       {!connected && (
         <div className="alert-error">

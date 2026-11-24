@@ -13,7 +13,9 @@ const MENU = [
   { href: "/sales", label: "売上集計", icon: "📈" },
 ];
 
-export default function Sidebar({ email }) {
+const ADMIN_MENU = [{ href: "/staff", label: "スタッフ管理", icon: "👥" }];
+
+export default function Sidebar({ name, loginId, email, isAdmin }) {
   const pathname = usePathname();
 
   function isActive(href) {
@@ -29,7 +31,7 @@ export default function Sidebar({ email }) {
       </div>
 
       <nav className="admin-nav">
-        {MENU.map((item) => (
+        {[...MENU, ...(isAdmin ? ADMIN_MENU : [])].map((item) => (
           <Link
             key={item.href}
             href={item.href}
@@ -44,8 +46,9 @@ export default function Sidebar({ email }) {
       </nav>
 
       <div className="admin-user">
-        <div className="admin-user-email" title={email}>
-          {email}
+        <div className="admin-user-email" title={loginId || email}>
+          <span style={{ color: "#ffffff", fontWeight: 700 }}>{name}</span>
+          <span style={{ marginLeft: 6 }}>{isAdmin ? "管理者" : "スタッフ"}</span>
         </div>
         <form action={signOut}>
           <button type="submit" className="admin-logout">

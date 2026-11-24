@@ -2,18 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "../../../lib/supabase/server";
+import { requireStaff, staffLabel } from "../../../lib/staff";
 import { updateOrder, addOrderNote } from "../../../lib/woocommerce";
 import { ORDER_STATUSES } from "../../../lib/format";
-
-async function requireStaff() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  if (!data?.user) {
-    redirect("/login");
-  }
-  return data.user;
-}
 
 function backTo(id, params) {
   const qs = new URLSearchParams(params).toString();
@@ -33,7 +24,7 @@ export async function updateOrderStatus(orderId, formData) {
   try {
     await updateOrder(orderId, { status });
     const label = ORDER_STATUSES[status].label;
-    const staffNote = `[管理アプリ] ${user.email} がステータスを「${label}」に変更${
+    const staffNote = `[管理アプリ] ${staffLabel(user)} がステータスを「${label}」に変更${
       note ? `\nメモ: ${note}` : ""
     }`;
     await addOrderNote(orderId, staffNote, false);
@@ -59,7 +50,7 @@ export async function addStaffNote(orderId, formData) {
 
   let errorMessage = "";
   try {
-    await addOrderNote(orderId, `[管理アプリ] ${user.email}\n${note}`, false);
+    await addOrderNote(orderId, `[管理アプリ] ${staffLabel(user)}\n${note}`, false);
   } catch (err) {
     errorMessage = err.message || "メモの追加に失敗しました";
   }

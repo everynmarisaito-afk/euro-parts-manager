@@ -2,18 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "../../../lib/supabase/server";
+import { requireStaff, staffLabel } from "../../../lib/staff";
 import { getOrder, updateOrder, addOrderNote } from "../../../lib/woocommerce";
 import { CARRIERS, META_KEYS, trackingUrl } from "../../../lib/shipping";
-
-async function requireStaff() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  if (!data?.user) {
-    redirect("/login");
-  }
-  return data.user;
-}
 
 function safeReturn(raw) {
   const s = String(raw || "");
@@ -63,7 +54,7 @@ export async function markShippedAction(formData) {
         { key: META_KEYS.carrier, value: carrier },
         { key: META_KEYS.number, value: number },
         { key: META_KEYS.shippedAt, value: shippedAt },
-        { key: META_KEYS.shippedBy, value: user.email },
+        { key: META_KEYS.shippedBy, value: staffLabel(user) },
       ],
     });
 
@@ -73,7 +64,7 @@ export async function markShippedAction(formData) {
     // スタッフ用の記録
     await addOrderNote(
       orderId,
-      `[管理アプリ] ${user.email} が発送済みに変更\n${label} 追跡番号: ${number}`,
+      `[管理アプリ] ${staffLabel(user)} が発送済みに変更\n${label} 追跡番号: ${number}`,
       false
     );
 

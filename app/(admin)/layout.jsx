@@ -1,20 +1,24 @@
 import { redirect } from "next/navigation";
-import { createClient } from "../../lib/supabase/server";
+import { getCurrentStaff } from "../../lib/staff";
 import Sidebar from "./Sidebar";
 import "./admin.css";
 
 export default async function AdminLayout({ children }) {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
+  const staff = await getCurrentStaff();
 
-  // proxy でも確認しているが、念のためここでも未ログインを弾く
-  if (!data?.user) {
-    redirect("/login");
+  // 未ログイン・スタッフ未登録・停止中はログイン画面へ
+  if (!staff) {
+    redirect("/login?denied=1");
   }
 
   return (
     <div className="admin-shell">
-      <Sidebar email={data.user.email} />
+      <Sidebar
+        name={staff.name}
+        loginId={staff.loginId}
+        email={staff.email}
+        isAdmin={staff.isAdmin}
+      />
       <main className="admin-main">{children}</main>
     </div>
   );

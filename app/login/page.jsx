@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase/client";
+
+// lib/staff.js と同じ値（サーバー専用コードを読み込まないようにここにも定義）
+const STAFF_EMAIL_DOMAIN = "staff.everyn-club.com";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,6 +13,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("denied")) {
+      setError("このアカウントは利用できません。管理者に確認してください。");
+    }
+  }, []);
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -19,13 +28,23 @@ export default function LoginPage() {
     try {
       const supabase = createClient();
 
+      // ログインIDの場合はスタッフ用のメールアドレスに変換する
+      const id = email.trim().toLowerCase();
+      const loginEmail = id.includes("@") ? id : `${id}@${STAFF_EMAIL_DOMAIN}`;
+
       const { error: loginError } =
         await supabase.auth.signInWithPassword({
-          email,
+          email: loginEmail,
           password,
         });
 
       if (loginError) {
+        if (/invalid login credentials/i.test(loginError.message)) {
+          throw new Error("ログインIDまたはパスワードが違います");
+        }
+        if (/banned/i.test(loginError.message)) {
+          throw new Error("このアカウントは停止されています");
+        }
         throw loginError;
       }
 
@@ -62,16 +81,17 @@ if (userError || !userData.user) {
 
         <form onSubmit={handleLogin}>
           <label style={styles.label}>
-            メールアドレス
+            ログインID または メールアドレス
           </label>
           <input
-            type="email"
-            autoComplete="email"
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             style={styles.input}
-            placeholder="メールアドレスを入力"
+            placeholder="ログインIDを入力"
           />
 
           <label style={styles.label}>
