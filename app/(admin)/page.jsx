@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { listOrders, countProducts } from "../../lib/woocommerce";
+import { listOrders, countProducts, fetchOrdersForSales } from "../../lib/woocommerce";
+import { resolveRange, rangeToUtc, aggregate } from "../../lib/sales";
+import { formatMoney } from "../../lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -20,13 +22,24 @@ async function countOutOfStock() {
   }
 }
 
+async function monthSales() {
+  try {
+    const range = resolveRange({ preset: "thisMonth" });
+    const { orders } = await fetchOrdersForSales(rangeToUtc(range));
+    return aggregate(orders, range);
+  } catch {
+    return null;
+  }
+}
+
 export default async function DashboardPage({ searchParams }) {
   const sp = await searchParams;
-  const [processing, onHold, pending, outOfStock] = await Promise.all([
+  const [processing, onHold, pending, outOfStock, sales] = await Promise.all([
     countOrders("processing"),
     countOrders("on-hold"),
     countOrders("pending"),
     countOutOfStock(),
+    monthSales(),
   ]);
 
   const stats = [
@@ -80,12 +93,21 @@ export default async function DashboardPage({ searchParams }) {
         ))}
       </div>
 
-      <div className="card" style={{ marginTop: 16 }}>
-        <h2 className="card-title">準備中の機能</h2>
-        <p style={{ fontSize: 14, color: "#6b7280", margin: 0 }}>
-          売上サマリーは、売上集計の画面ができたあとに追加します。在庫が少ない商品は「在庫管理」で赤枠表示されます。
-        </p>
-      </div>
+      <Link
+        href="/sales"
+        className="card"
+        style={{ display: "block", marginTop: 16, textDecoration: "none", color: "inherit" }}
+      >
+        <div style={{ fontSize: 13, color: "#6b7280" }}>今月の売上（返金差し引き）</div>
+        <div style={{ fontSize: 32, fontWeight: 800, marginTop: 8 }}>
+          {sales ? formatMoney(sales.net) : "-"}
+        </div>
+        {sales && (
+          <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
+            注文 {sales.orderCount}件・平均 {formatMoney(sales.average)}・{sales.items}個 販売
+          </div>
+        )}
+      </Link>
     </>
   );
 }

@@ -391,6 +391,113 @@
   color: #374151;
 }
 
+/* ===== 売上 ===== */
+.range-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 13px;
+  color: #6b7280;
+}
+.range-form .input {
+  padding: 6px 8px;
+  font-size: 13px;
+}
+.range-form .btn {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+.kpi-grid > .card + .card {
+  margin-top: 0;
+}
+.kpi-label {
+  font-size: 13px;
+  color: #6b7280;
+}
+.kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 6px 0 4px;
+  color: #1f2937;
+}
+.kpi-change {
+  font-size: 12px;
+  font-weight: 700;
+}
+.chart {
+  position: relative;
+  padding-top: 18px;
+}
+.chart-max {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-size: 11px;
+  color: #9ca3af;
+}
+.chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 220px;
+  padding-bottom: 22px;
+  position: relative;
+}
+.chart-bars::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 22px;
+  border-bottom: 1px solid #d1d5db;
+}
+.chart-col {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+  cursor: default;
+}
+.chart-col:hover {
+  background: #f3f4f6;
+}
+.chart-bar {
+  background: #3b6fd8;
+  border-radius: 4px 4px 0 0;
+  max-width: 28px;
+  width: 70%;
+  margin: 0 auto;
+}
+.chart-col:hover .chart-bar {
+  background: #2453b3;
+}
+.chart-x {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+.breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-top: 28px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
 /* ===== スマホ ===== */
 @media (max-width: 800px) {
   .admin-shell {
@@ -436,5 +543,9 @@
   }
   .hide-sm {
     display: none;
+  }
+  .range-form {
+    margin-left: 0;
+    flex-wrap: wrap;
   }
 }
