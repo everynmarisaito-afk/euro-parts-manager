@@ -2,12 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { requireStaff } from "../../../lib/staff";
-import {
-  updateProduct,
-  updateVariation,
-} from "../../../lib/woocommerce";
+import { requireStaff, staffLabel } from "../../../lib/staff";
+import { updateProduct, updateVariation } from "../../../lib/woocommerce";
 import { PRODUCT_STATUSES } from "../../../lib/format";
+import { setStock } from "../../../lib/stock";
+
+// ECサイトでの表示（在庫数は出さず、「取り寄せ」か「販売停止」だけ）
+const SITE_STATUSES = new Set(["onbackorder", "outofstock"]);
 
 // 戻り先は管理画面内のパスだけ許可する
 function safeReturn(raw, fallback) {
@@ -21,6 +22,8 @@ function withParam(path, key, value) {
   const p = new URLSearchParams(qs);
   p.delete("updated");
   p.delete("error");
+  p.delete("cutover");
+  p.delete("synced");
   p.set(key, value);
   return `${base}?${p.toString()}`;
 }
@@ -29,8 +32,8 @@ function parseStock(raw) {
   const s = String(raw ?? "").trim();
   if (s === "") return { ok: false, message: "在庫数を入力してください" };
   const n = Number(s);
-  if (!Number.isInteger(n) || n < 0) {
-    return { ok: false, message: "在庫数は0以上の整数で入力してください" };
+  if (!Number.isInteger(n) || Math.abs(n) > 999999) {
+    return { ok: false, message: "在庫数は整数で入力してください" };
   }
   return { ok: true, value: n };
 }
@@ -55,9 +58,9 @@ function finish(returnTo, errorMessage) {
   redirect(withParam(returnTo, "updated", "1"));
 }
 
-// 在庫一覧からの在庫数変更（商品 or バリエーション）
+// 在庫一覧からの在庫数変更（社内在庫。ECサイトには影響しない）
 export async function updateStockAction(formData) {
-  await requireStaff();
+  const me = await requireStaff();
   const productId = String(formData.get("productId") || "");
   const variationId = String(formData.get("variationId") || "");
   const returnTo = safeReturn(formData.get("returnTo"), "/inventory");
@@ -69,12 +72,12 @@ export async function updateStockAction(formData) {
 
   let errorMessage = "";
   try {
-    const fields = { manage_stock: true, stock_quantity: stock.value };
-    if (variationId) {
-      await updateVariation(productId, variationId, fields);
-    } else {
-      await updateProduct(productId, fields);
-    }
+    await setStock({
+      productId,
+      variationId: variationId || 0,
+      quantity: stock.value,
+      by: staffLabel(me),
+    });
   } catch (err) {
     errorMessage = err.message || "在庫の更新に失敗しました";
   }
@@ -83,18 +86,20 @@ export async function updateStockAction(formData) {
 
 // 商品詳細の編集
 export async function updateProductAction(productId, formData) {
-  await requireStaff();
+  const me = await requireStaff();
   const returnTo = `/products/${productId}`;
 
   const name = String(formData.get("name") || "").trim();
   const sku = String(formData.get("sku") || "").trim();
   const status = String(formData.get("status") || "");
-  const manageStock = formData.get("manage_stock") === "on";
+  const siteStatus = String(formData.get("site_status") || "onbackorder");
+  const isVariable = formData.get("type") === "variable";
   const regular = parsePrice(formData.get("regular_price"), "通常価格");
   const sale = parsePrice(formData.get("sale_price"), "セール価格");
 
   if (!name) finish(returnTo, "商品名を入力してください");
   if (!PRODUCT_STATUSES[status]) finish(returnTo, "公開状態が正しくありません");
+  if (!SITE_STATUSES.has(siteStatus)) finish(returnTo, "ECサイトの表示が正しくありません");
   if (!regular.ok) finish(returnTo, regular.message);
   if (!sale.ok) finish(returnTo, sale.message);
   if (
@@ -105,31 +110,31 @@ export async function updateProductAction(productId, formData) {
     finish(returnTo, "セール価格は通常価格より安くしてください");
   }
 
+  let stock = null;
+  if (!isVariable) {
+    stock = parseStock(formData.get("stock"));
+    if (!stock.ok) finish(returnTo, stock.message);
+  }
+
   const fields = {
     name,
     sku,
     status,
-    manage_stock: manageStock,
+    // 在庫数はECサイトに出さない
+    manage_stock: false,
+    stock_status: siteStatus,
   };
-
-  // バリエーション商品は価格をバリエーションごとに持つので送らない
-  if (formData.get("type") !== "variable") {
+  if (!isVariable) {
     fields.regular_price = regular.value;
     fields.sale_price = sale.value;
-  }
-
-  if (manageStock) {
-    const stock = parseStock(formData.get("stock"));
-    if (!stock.ok) finish(returnTo, stock.message);
-    fields.stock_quantity = stock.value;
-  } else {
-    const stockStatus = String(formData.get("stock_status") || "instock");
-    fields.stock_status = stockStatus;
   }
 
   let errorMessage = "";
   try {
     await updateProduct(productId, fields);
+    if (stock) {
+      await setStock({ productId, quantity: stock.value, by: staffLabel(me) });
+    }
   } catch (err) {
     errorMessage = err.message || "商品の更新に失敗しました";
   }
@@ -139,23 +144,31 @@ export async function updateProductAction(productId, formData) {
 
 // 商品詳細のバリエーション行の編集
 export async function updateVariationAction(productId, variationId, formData) {
-  await requireStaff();
+  const me = await requireStaff();
   const returnTo = `/products/${productId}`;
 
   const regular = parsePrice(formData.get("regular_price"), "通常価格");
   const sale = parsePrice(formData.get("sale_price"), "セール価格");
   const stock = parseStock(formData.get("stock"));
+  const siteStatus = String(formData.get("site_status") || "onbackorder");
   if (!regular.ok) finish(returnTo, regular.message);
   if (!sale.ok) finish(returnTo, sale.message);
   if (!stock.ok) finish(returnTo, stock.message);
+  if (!SITE_STATUSES.has(siteStatus)) finish(returnTo, "ECサイトの表示が正しくありません");
 
   let errorMessage = "";
   try {
     await updateVariation(productId, variationId, {
       regular_price: regular.value,
       sale_price: sale.value,
-      manage_stock: true,
-      stock_quantity: stock.value,
+      manage_stock: false,
+      stock_status: siteStatus,
+    });
+    await setStock({
+      productId,
+      variationId,
+      quantity: stock.value,
+      by: staffLabel(me),
     });
   } catch (err) {
     errorMessage = err.message || "バリエーションの更新に失敗しました";

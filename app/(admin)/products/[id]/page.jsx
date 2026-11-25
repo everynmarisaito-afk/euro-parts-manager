@@ -2,18 +2,40 @@ import Link from "next/link";
 import { getProduct, listVariations } from "../../../../lib/woocommerce";
 import {
   PRODUCT_STATUSES,
-  STOCK_STATUSES,
   productStatusInfo,
-  stockStatusInfo,
-  isLowStock,
   variationLabel,
+  formatDateTime,
 } from "../../../../lib/format";
+import {
+  LOW_STOCK,
+  stockKey,
+  getStockMap,
+  getMovements,
+} from "../../../../lib/stock";
 import { updateProductAction, updateVariationAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
-function numOrEmpty(v) {
-  return v === null || v === undefined || v === "" ? "" : String(v);
+const SITE_OPTIONS = [
+  { value: "onbackorder", label: "取り寄せ（注文を受け付ける）" },
+  { value: "outofstock", label: "販売停止（注文を受け付けない）" },
+];
+
+const REASONS = {
+  manual: "手動で変更",
+  order: "注文",
+  order_cancel: "キャンセル・返金で戻し",
+  initial: "初期取り込み",
+};
+
+function stockStyle(qty) {
+  if (qty <= 0) return { borderColor: "#f87171", background: "#fef2f2" };
+  if (qty <= LOW_STOCK) return { borderColor: "#fbbf24", background: "#fffbeb" };
+  return undefined;
+}
+
+function siteValue(status) {
+  return status === "outofstock" ? "outofstock" : "onbackorder";
 }
 
 export default async function ProductDetailPage({ params, searchParams }) {
@@ -22,13 +44,20 @@ export default async function ProductDetailPage({ params, searchParams }) {
 
   let product = null;
   let variations = [];
+  let stock = {};
+  let movements = [];
   let error = "";
 
   try {
     product = await getProduct(id);
-    if (product.type === "variable") {
-      variations = await listVariations(id);
-    }
+    const [vars, map, moves] = await Promise.all([
+      product.type === "variable" ? listVariations(id) : Promise.resolve([]),
+      getStockMap([product.id]),
+      getMovements(product.id),
+    ]);
+    variations = vars;
+    stock = map;
+    movements = moves;
   } catch (err) {
     error = err.message;
   }
@@ -47,10 +76,11 @@ export default async function ProductDetailPage({ params, searchParams }) {
   }
 
   const ps = productStatusInfo(product.status);
-  const ss = stockStatusInfo(product.stock_status);
   const isVariable = product.type === "variable";
   const updateAction = updateProductAction.bind(null, product.id);
   const img = product.images?.[0]?.src;
+  const qtyOf = (vid = 0) => stock[stockKey(product.id, vid)]?.quantity ?? 0;
+  const varName = Object.fromEntries(variations.map((v) => [v.id, variationLabel(v)]));
 
   return (
     <>
@@ -76,9 +106,15 @@ export default async function ProductDetailPage({ params, searchParams }) {
               <span className="badge" style={{ color: ps.color, background: ps.bg }}>
                 {ps.label}
               </span>
-              <span className="badge" style={{ color: ss.color, background: ss.bg }}>
-                {ss.label}
-              </span>
+              {product.stock_status === "outofstock" ? (
+                <span className="badge" style={{ color: "#4b5563", background: "#e5e7eb" }}>
+                  販売停止
+                </span>
+              ) : (
+                <span className="badge" style={{ color: "#374151", background: "#f3f4f6" }}>
+                  サイト表示：取り寄せ
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -91,6 +127,7 @@ export default async function ProductDetailPage({ params, searchParams }) {
 
       {sp?.updated && <div className="alert-success">保存しました</div>}
       {typeof sp?.error === "string" && <div className="alert-error">{sp.error}</div>}
+      {error && <div className="alert-error">{error}</div>}
 
       <div className="card">
         <h2 className="card-title">基本情報</h2>
@@ -99,12 +136,7 @@ export default async function ProductDetailPage({ params, searchParams }) {
           <div className="form-grid">
             <div className="form-field full">
               <label>商品名</label>
-              <input
-                name="name"
-                className="input"
-                defaultValue={product.name}
-                required
-              />
+              <input name="name" className="input" defaultValue={product.name} required />
             </div>
             <div className="form-field">
               <label>SKU（品番）</label>
@@ -145,50 +177,37 @@ export default async function ProductDetailPage({ params, searchParams }) {
               </>
             )}
 
-            <div className="form-field full">
-              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input
-                  type="checkbox"
-                  name="manage_stock"
-                  defaultChecked={product.manage_stock}
-                />
-                在庫数を管理する
-              </label>
-              <div className="form-hint">
-                オンにすると在庫数が0になったとき自動で「在庫切れ」になります
-                {isVariable ? "（バリエーション商品は下の表で個別に管理するのがおすすめです）" : ""}
-              </div>
-            </div>
             <div className="form-field">
-              <label>在庫数（在庫管理オンのとき）</label>
-              <input
-                type="number"
-                name="stock"
-                min="0"
-                step="1"
-                className="input"
-                defaultValue={numOrEmpty(product.stock_quantity) || "0"}
-                style={
-                  isLowStock(product)
-                    ? { borderColor: "#f87171", background: "#fef2f2" }
-                    : undefined
-                }
-              />
-            </div>
-            <div className="form-field">
-              <label>在庫状態（在庫管理オフのとき）</label>
+              <label>ECサイトでの表示</label>
               <select
-                name="stock_status"
+                name="site_status"
                 className="select"
-                defaultValue={product.stock_status}
+                defaultValue={siteValue(product.stock_status)}
               >
-                {Object.entries(STOCK_STATUSES).map(([v, info]) => (
-                  <option key={v} value={v}>
-                    {info.label}
+                {SITE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
                   </option>
                 ))}
               </select>
+              <div className="form-hint">在庫数はECサイトに表示されません</div>
             </div>
+
+            {!isVariable && (
+              <div className="form-field">
+                <label>社内在庫数</label>
+                <input
+                  type="number"
+                  name="stock"
+                  step="1"
+                  required
+                  className="input"
+                  defaultValue={qtyOf(0)}
+                  style={stockStyle(qtyOf(0))}
+                />
+                <div className="form-hint">注文が入ると自動で減ります（マイナス＝不足数）</div>
+              </div>
+            )}
           </div>
           <div style={{ marginTop: 16, textAlign: "right" }}>
             <button type="submit" className="btn btn-primary">
@@ -206,10 +225,10 @@ export default async function ProductDetailPage({ params, searchParams }) {
               <thead>
                 <tr>
                   <th>バリエーション</th>
-                  <th className="hide-sm">SKU</th>
                   <th>通常価格</th>
                   <th>セール価格</th>
-                  <th>在庫数</th>
+                  <th>ECサイト</th>
+                  <th>社内在庫</th>
                   <th></th>
                 </tr>
               </thead>
@@ -217,13 +236,16 @@ export default async function ProductDetailPage({ params, searchParams }) {
                 {variations.map((v) => {
                   const formId = `var-${v.id}`;
                   const action = updateVariationAction.bind(null, product.id, v.id);
+                  const qty = qtyOf(v.id);
                   return (
                     <tr key={v.id}>
                       <td>
                         {variationLabel(v)}
+                        {v.sku && (
+                          <div style={{ fontSize: 12, color: "#6b7280" }}>{v.sku}</div>
+                        )}
                         <form id={formId} action={action} />
                       </td>
-                      <td className="hide-sm">{v.sku || "-"}</td>
                       <td>
                         <input
                           form={formId}
@@ -231,7 +253,7 @@ export default async function ProductDetailPage({ params, searchParams }) {
                           className="input"
                           inputMode="numeric"
                           defaultValue={v.regular_price}
-                          style={{ width: 100 }}
+                          style={{ width: 90 }}
                         />
                       </td>
                       <td>
@@ -241,25 +263,30 @@ export default async function ProductDetailPage({ params, searchParams }) {
                           className="input"
                           inputMode="numeric"
                           defaultValue={v.sale_price}
-                          style={{ width: 100 }}
+                          style={{ width: 90 }}
                         />
+                      </td>
+                      <td>
+                        <select
+                          form={formId}
+                          name="site_status"
+                          className="select"
+                          defaultValue={siteValue(v.stock_status)}
+                        >
+                          <option value="onbackorder">取り寄せ</option>
+                          <option value="outofstock">販売停止</option>
+                        </select>
                       </td>
                       <td>
                         <input
                           form={formId}
                           type="number"
                           name="stock"
-                          min="0"
                           step="1"
                           required
                           className="input"
-                          defaultValue={v.manage_stock ? v.stock_quantity ?? 0 : 0}
-                          style={{
-                            width: 80,
-                            ...(isLowStock(v)
-                              ? { borderColor: "#f87171", background: "#fef2f2" }
-                              : {}),
-                          }}
+                          defaultValue={qty}
+                          style={{ width: 80, ...(stockStyle(qty) || {}) }}
                         />
                       </td>
                       <td>
@@ -275,6 +302,64 @@ export default async function ProductDetailPage({ params, searchParams }) {
           </div>
         </div>
       )}
+
+      <div className="card" style={{ padding: 0 }}>
+        <h2 className="card-title" style={{ padding: "20px 20px 0" }}>
+          在庫の履歴（最新30件）
+        </h2>
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>日時</th>
+                {isVariable && <th>バリエーション</th>}
+                <th>内容</th>
+                <th className="num">増減</th>
+                <th className="num">在庫</th>
+                <th className="hide-sm">担当</th>
+              </tr>
+            </thead>
+            <tbody>
+              {movements.map((m) => (
+                <tr key={m.id}>
+                  <td style={{ whiteSpace: "nowrap", fontSize: 13 }}>
+                    {formatDateTime(m.created_at)}
+                  </td>
+                  {isVariable && (
+                    <td style={{ fontSize: 13 }}>{varName[m.variation_id] || "-"}</td>
+                  )}
+                  <td style={{ fontSize: 13 }}>
+                    {REASONS[m.reason] || m.reason}
+                    {m.order_id && (
+                      <>
+                        {" "}
+                        <Link href={`/orders/${m.order_id}`}>{m.note || `注文 ${m.order_id}`}</Link>
+                      </>
+                    )}
+                  </td>
+                  <td
+                    className="num"
+                    style={{ color: m.change < 0 ? "#b91c1c" : "#166534", fontWeight: 700 }}
+                  >
+                    {m.change > 0 ? `+${m.change}` : m.change}
+                  </td>
+                  <td className="num">{m.quantity_after}</td>
+                  <td className="hide-sm" style={{ fontSize: 12, color: "#6b7280" }}>
+                    {m.created_by || "-"}
+                  </td>
+                </tr>
+              ))}
+              {movements.length === 0 && (
+                <tr>
+                  <td colSpan={isVariable ? 6 : 5} className="placeholder">
+                    履歴はまだありません
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <div className="card">
         <h2 className="card-title">その他の情報</h2>

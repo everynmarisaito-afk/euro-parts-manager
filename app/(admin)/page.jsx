@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { listOrders, countProducts, fetchOrdersForSales } from "../../lib/woocommerce";
+import { listOrders, fetchOrdersForSales } from "../../lib/woocommerce";
+import { countStockAtMost, syncStockQuietly } from "../../lib/stock";
 import { resolveRange, rangeToUtc, aggregate } from "../../lib/sales";
 import { formatMoney } from "../../lib/format";
 
@@ -14,9 +15,9 @@ async function countOrders(status) {
   }
 }
 
-async function countOutOfStock() {
+async function countReorder() {
   try {
-    return await countProducts({ stock_status: "outofstock" });
+    return await countStockAtMost(0);
   } catch {
     return null;
   }
@@ -34,11 +35,13 @@ async function monthSales() {
 
 export default async function DashboardPage({ searchParams }) {
   const sp = await searchParams;
-  const [processing, onHold, pending, outOfStock, sales] = await Promise.all([
+  // 新しい注文を社内在庫に反映してから表示する
+  await syncStockQuietly();
+  const [processing, onHold, pending, reorder, sales] = await Promise.all([
     countOrders("processing"),
     countOrders("on-hold"),
     countOrders("pending"),
-    countOutOfStock(),
+    countReorder(),
     monthSales(),
   ]);
 
@@ -46,7 +49,7 @@ export default async function DashboardPage({ searchParams }) {
     { label: "未発送（処理中）の注文", value: processing, href: "/shipping" },
     { label: "保留中の注文", value: onHold, href: "/orders?status=on-hold" },
     { label: "支払い待ちの注文", value: pending, href: "/orders?status=pending" },
-    { label: "在庫切れの商品", value: outOfStock, href: "/inventory?stock=outofstock" },
+    { label: "要発注（在庫0以下）", value: reorder, href: "/inventory?tab=reorder" },
   ];
 
   const connected = stats.some((s) => s.value !== null);

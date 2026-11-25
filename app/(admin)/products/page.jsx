@@ -3,10 +3,9 @@ import { listProducts } from "../../../lib/woocommerce";
 import {
   PRODUCT_STATUSES,
   productStatusInfo,
-  stockStatusInfo,
   formatMoney,
-  isLowStock,
 } from "../../../lib/format";
+import { LOW_STOCK, stockKey, getStockMap } from "../../../lib/stock";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +54,7 @@ export default async function ProductsPage({ searchParams }) {
   let total = 0;
   let totalPages = 1;
   let error = "";
+  let stock = {};
 
   try {
     const res = await listProducts({
@@ -68,6 +68,7 @@ export default async function ProductsPage({ searchParams }) {
     products = res.data;
     total = res.total;
     totalPages = Math.max(1, res.totalPages);
+    stock = await getStockMap(products.map((p) => p.id));
   } catch (err) {
     error = err.message;
   }
@@ -118,14 +119,13 @@ export default async function ProductsPage({ searchParams }) {
                 <th>商品</th>
                 <th className="hide-sm">カテゴリー</th>
                 <th className="num">価格</th>
-                <th>在庫</th>
+                <th>社内在庫</th>
                 <th>公開</th>
               </tr>
             </thead>
             <tbody>
               {products.map((p) => {
                 const ps = productStatusInfo(p.status);
-                const ss = stockStatusInfo(p.stock_status);
                 const img = p.images?.[0]?.src;
                 return (
                   <tr key={p.id}>
@@ -150,21 +150,26 @@ export default async function ProductsPage({ searchParams }) {
                       {(p.categories || []).map((c) => c.name).join("、") || "-"}
                     </td>
                     <td className="num">{priceText(p)}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      <span className="badge" style={{ color: ss.color, background: ss.bg }}>
-                        {ss.label}
-                      </span>
-                      {p.manage_stock && (
-                        <span
-                          style={{
-                            marginLeft: 6,
-                            fontSize: 13,
-                            color: isLowStock(p) ? "#b91c1c" : "#374151",
-                            fontWeight: isLowStock(p) ? 700 : 400,
-                          }}
-                        >
-                          {p.stock_quantity}個
-                        </span>
+                    <td style={{ whiteSpace: "nowrap", fontSize: 13 }}>
+                      {p.type === "variable" ? (
+                        <span style={{ color: "#6b7280" }}>バリエーション別</span>
+                      ) : (
+                        (() => {
+                          const q = stock[stockKey(p.id)]?.quantity ?? 0;
+                          return (
+                            <span
+                              style={{
+                                fontWeight: q <= LOW_STOCK ? 700 : 400,
+                                color: q <= 0 ? "#b91c1c" : q <= LOW_STOCK ? "#92400e" : "#374151",
+                              }}
+                            >
+                              {q}個{q <= 0 ? "（要発注）" : ""}
+                            </span>
+                          );
+                        })()
+                      )}
+                      {p.stock_status === "outofstock" && (
+                        <div style={{ fontSize: 11, color: "#6b7280" }}>販売停止中</div>
                       )}
                     </td>
                     <td>

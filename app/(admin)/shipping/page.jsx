@@ -9,6 +9,8 @@ import {
 import { CARRIERS, getTracking } from "../../../lib/shipping";
 import { markShippedAction } from "./actions";
 
+import { syncStockQuietly } from "../../../lib/stock";
+
 export const dynamic = "force-dynamic";
 
 const TABS = [
@@ -68,6 +70,7 @@ function Address({ order }) {
 
 export default async function ShippingPage({ searchParams }) {
   const sp = await searchParams;
+  await syncStockQuietly();
   const tab = sp?.tab === "shipped" ? "shipped" : "pending";
   const page = Math.max(1, Number(sp?.page) || 1);
   const returnTo = buildHref({ tab, page });

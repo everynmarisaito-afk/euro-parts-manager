@@ -8,6 +8,8 @@ import {
   personName,
 } from "../../../lib/format";
 
+import { syncStockQuietly } from "../../../lib/stock";
+
 export const dynamic = "force-dynamic";
 
 const TABS = [
@@ -31,6 +33,7 @@ function buildHref({ status, search, page }) {
 
 export default async function OrdersPage({ searchParams }) {
   const sp = await searchParams;
+  await syncStockQuietly();
   const status = typeof sp?.status === "string" ? sp.status : "";
   const search = typeof sp?.q === "string" ? sp.q.trim() : "";
   const page = Math.max(1, Number(sp?.page) || 1);
