@@ -17,6 +17,7 @@ const TABS = [
   { value: "processing", label: ORDER_STATUSES.processing.label },
   { value: "on-hold", label: ORDER_STATUSES["on-hold"].label },
   { value: "pending", label: ORDER_STATUSES.pending.label },
+  { value: "shipped", label: ORDER_STATUSES.shipped.label },
   { value: "completed", label: ORDER_STATUSES.completed.label },
   { value: "cancelled", label: ORDER_STATUSES.cancelled.label },
   { value: "refunded", label: ORDER_STATUSES.refunded.label },

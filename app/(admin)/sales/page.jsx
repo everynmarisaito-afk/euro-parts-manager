@@ -104,7 +104,7 @@ export default async function SalesPage({ searchParams }) {
         <div>
           <h1 className="page-title">売上集計</h1>
           <p className="page-sub">
-            {range.from} 〜 {range.to}（日本時間）・対象：処理中／完了／保留中の注文（返金を差し引き）
+            {range.from} 〜 {range.to}（日本時間）・対象：処理中／保留中／発送済み／完了の注文（返金を差し引き）
           </p>
         </div>
       </div>
