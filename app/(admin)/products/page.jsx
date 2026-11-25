@@ -80,6 +80,10 @@ export default async function ProductsPage({ searchParams }) {
           <h1 className="page-title">商品管理</h1>
           <p className="page-sub">WooCommerce の商品一覧（{total}件）</p>
         </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <Link href="/products/new" className="btn btn-primary">
+          ＋ 商品を登録
+        </Link>
         <form method="get" action="/products" style={{ display: "flex", gap: 8 }}>
           {status && <input type="hidden" name="status" value={status} />}
           <input
@@ -94,6 +98,7 @@ export default async function ProductsPage({ searchParams }) {
             検索
           </button>
         </form>
+        </div>
       </div>
 
       <div className="status-tabs">

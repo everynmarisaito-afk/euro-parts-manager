@@ -498,6 +498,83 @@
   color: #4b5563;
 }
 
+/* ===== 商品登録 ===== */
+textarea.input {
+  width: 100%;
+  font-family: inherit;
+  resize: vertical;
+}
+.category-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  font-size: 14px;
+}
+.uploader-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.uploader-item,
+.uploader-add {
+  width: 120px;
+  height: 120px;
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+.uploader-item {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+.uploader-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.uploader-main {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: #252b37;
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.uploader-actions {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.55);
+}
+.uploader-actions button {
+  background: transparent;
+  border: 0;
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+}
+.uploader-add {
+  border: 2px dashed #d1d5db;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: 13px;
+  cursor: pointer;
+  background: #fff;
+}
+.uploader-add:hover {
+  border-color: #9ca3af;
+}
+
 /* ===== スマホ ===== */
 @media (max-width: 800px) {
   .admin-shell {

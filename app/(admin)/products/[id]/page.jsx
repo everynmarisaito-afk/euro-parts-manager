@@ -126,6 +126,11 @@ export default async function ProductDetailPage({ params, searchParams }) {
       </div>
 
       {sp?.updated && <div className="alert-success">保存しました</div>}
+      {sp?.created && (
+        <div className="alert-success">
+          商品を登録しました。「ECサイトで見る」から表示を確認できます（下書きの場合はWordPressにログインしたブラウザで見られます）
+        </div>
+      )}
       {typeof sp?.error === "string" && <div className="alert-error">{sp.error}</div>}
       {error && <div className="alert-error">{error}</div>}
 
