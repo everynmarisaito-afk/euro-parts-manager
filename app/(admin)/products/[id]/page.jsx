@@ -13,6 +13,7 @@ import {
   getMovements,
 } from "../../../../lib/stock";
 import { updateProductAction, updateVariationAction } from "../actions";
+import { oemFromProduct } from "../../../../lib/oem";
 
 export const dynamic = "force-dynamic";
 
@@ -146,6 +147,17 @@ export default async function ProductDetailPage({ params, searchParams }) {
             <div className="form-field">
               <label>SKU（品番）</label>
               <input name="sku" className="input" defaultValue={product.sku} />
+            </div>
+            <div className="form-field">
+              <label>純正品番</label>
+              <textarea
+                name="oem_numbers"
+                className="input"
+                rows={2}
+                defaultValue={oemFromProduct(product).join("\n")}
+                placeholder={"複数ある場合は改行かカンマで区切る"}
+              />
+              <div className="form-hint">ECサイトの「追加情報」に表示されます</div>
             </div>
             <div className="form-field">
               <label>公開状態</label>

@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireStaff, staffLabel } from "../../../lib/staff";
-import { updateProduct, updateVariation, createProduct } from "../../../lib/woocommerce";
+import { updateProduct, updateVariation, createProduct, getProduct } from "../../../lib/woocommerce";
+import { parseOemInput, mergeOemAttribute, saveOemIndex } from "../../../lib/oem";
 import { PRODUCT_STATUSES } from "../../../lib/format";
 import { setStock } from "../../../lib/stock";
 
@@ -129,9 +130,20 @@ export async function updateProductAction(productId, formData) {
     fields.sale_price = sale.value;
   }
 
+  // 純正品番（フォームに欄があるときだけ更新）
+  const hasOem = formData.has("oem_numbers");
+  const oemNumbers = hasOem ? parseOemInput(formData.get("oem_numbers")) : [];
+
   let errorMessage = "";
   try {
+    if (hasOem) {
+      const current = await getProduct(productId);
+      fields.attributes = mergeOemAttribute(current.attributes, oemNumbers);
+    }
     await updateProduct(productId, fields);
+    if (hasOem) {
+      await saveOemIndex(productId, oemNumbers);
+    }
     if (stock) {
       await setStock({ productId, quantity: stock.value, by: staffLabel(me) });
     }
@@ -229,6 +241,7 @@ export async function createProductAction(formData) {
     back("セール価格は通常価格より安くしてください");
   }
   if (!stock.ok) back(stock.message);
+  const oemNumbers = parseOemInput(formData.get("oem_numbers"));
 
   let product = null;
   let errorMessage = "";
@@ -246,7 +259,9 @@ export async function createProductAction(formData) {
       description: textToHtml(formData.get("description")),
       categories: categories.map((id) => ({ id })),
       images: images.map((src) => ({ src })),
+      attributes: mergeOemAttribute([], oemNumbers),
     });
+    await saveOemIndex(product.id, oemNumbers);
     await setStock({
       productId: product.id,
       quantity: stock.value,

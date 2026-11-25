@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { listProducts } from "../../../lib/woocommerce";
+import { listProducts, listProductsByIds } from "../../../lib/woocommerce";
+import { getOemMap, searchProductIdsByOem } from "../../../lib/oem";
 import {
   PRODUCT_STATUSES,
   productStatusInfo,
@@ -55,6 +56,8 @@ export default async function ProductsPage({ searchParams }) {
   let totalPages = 1;
   let error = "";
   let stock = {};
+  let oem = {};
+  let oemHits = new Set();
 
   try {
     const res = await listProducts({
@@ -68,7 +71,25 @@ export default async function ProductsPage({ searchParams }) {
     products = res.data;
     total = res.total;
     totalPages = Math.max(1, res.totalPages);
-    stock = await getStockMap(products.map((p) => p.id));
+
+    // 純正品番でも探す（1ページ目の先頭に追加）
+    if (search && page === 1) {
+      const oemIds = await searchProductIdsByOem(search);
+      const missing = oemIds.filter((id) => !products.some((p) => p.id === id));
+      if (missing.length) {
+        const extra = await listProductsByIds(missing);
+        oemHits = new Set(oemIds);
+        products = [...extra, ...products];
+        total += extra.length;
+      } else {
+        oemHits = new Set(oemIds);
+      }
+    }
+
+    [stock, oem] = await Promise.all([
+      getStockMap(products.map((p) => p.id)),
+      getOemMap(products.map((p) => p.id)),
+    ]);
   } catch (err) {
     error = err.message;
   }
@@ -91,7 +112,7 @@ export default async function ProductsPage({ searchParams }) {
             type="search"
             name="q"
             defaultValue={search}
-            placeholder="商品名・SKUで検索"
+            placeholder="商品名・SKU・純正品番で検索"
             style={{ width: 220 }}
           />
           <button type="submit" className="btn">
@@ -150,6 +171,17 @@ export default async function ProductsPage({ searchParams }) {
                         {p.sku ? `SKU: ${p.sku}` : "SKUなし"}
                         {p.type === "variable" ? "・バリエーションあり" : ""}
                       </div>
+                      {oem[p.id]?.length > 0 && (
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: oemHits.has(p.id) ? "#1e40af" : "#6b7280",
+                            fontWeight: oemHits.has(p.id) ? 700 : 400,
+                          }}
+                        >
+                          純正品番: {oem[p.id].join("、")}
+                        </div>
+                      )}
                     </td>
                     <td className="hide-sm" style={{ fontSize: 13 }}>
                       {(p.categories || []).map((c) => c.name).join("、") || "-"}

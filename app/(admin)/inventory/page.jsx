@@ -14,6 +14,7 @@ import {
   productIdsWithStockAtMost,
   syncStockQuietly,
 } from "../../../lib/stock";
+import { searchProductIdsByOem } from "../../../lib/oem";
 import { getCurrentStaff } from "../../../lib/staff";
 import { updateStockAction } from "../products/actions";
 import { cutoverAction, syncNowAction } from "./actions";
@@ -152,6 +153,17 @@ export default async function InventoryPage({ searchParams }) {
       products = res.data;
       total = res.total;
       totalPages = Math.max(1, res.totalPages);
+
+      // 純正品番でも探す
+      if (search && page === 1 && tab !== "stopped") {
+        const oemIds = await searchProductIdsByOem(search);
+        const missing = oemIds.filter((id) => !products.some((p) => p.id === id));
+        if (missing.length) {
+          const extra = await listProductsByIds(missing);
+          products = [...extra, ...products];
+          total += extra.length;
+        }
+      }
     }
 
     const variable = products.filter((p) => p.type === "variable");
@@ -185,7 +197,7 @@ export default async function InventoryPage({ searchParams }) {
             type="search"
             name="q"
             defaultValue={search}
-            placeholder="商品名・SKUで検索"
+            placeholder="商品名・SKU・純正品番で検索"
             style={{ width: 220 }}
           />
           <button type="submit" className="btn">

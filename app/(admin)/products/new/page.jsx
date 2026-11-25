@@ -64,6 +64,16 @@ export default async function NewProductPage({ searchParams }) {
               <div className="form-hint">他の商品と重複できません</div>
             </div>
             <div className="form-field">
+              <label>純正品番</label>
+              <textarea
+                name="oem_numbers"
+                className="input"
+                rows={2}
+                placeholder={"例：8W0 698 151 AB\n複数ある場合は改行かカンマで区切る"}
+              />
+              <div className="form-hint">ECサイトの「追加情報」に表示され、管理アプリで検索できます</div>
+            </div>
+            <div className="form-field">
               <label>公開状態</label>
               <select name="status" className="select" defaultValue="draft">
                 {Object.entries(PRODUCT_STATUSES).map(([v, info]) => (
