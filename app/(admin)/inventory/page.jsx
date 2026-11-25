@@ -257,7 +257,12 @@ export default async function InventoryPage({ searchParams }) {
           {sp.seeded}件の在庫数を取り込み）
         </div>
       )}
-      {sp?.synced && <div className="alert-success">注文 {sp.synced}件を在庫に反映しました</div>}
+      {sp?.synced && (
+        <div className="alert-success">
+          変更のあった注文 {sp.checked ?? 0}件を確認し、{sp.synced}件を在庫に反映しました
+          {Number(sp.old) > 0 ? `（切り替え前の注文 ${sp.old}件は対象外）` : ""}
+        </div>
+      )}
       {typeof sp?.error === "string" && <div className="alert-error">{sp.error}</div>}
       {error && <div className="alert-error">{error}</div>}
 

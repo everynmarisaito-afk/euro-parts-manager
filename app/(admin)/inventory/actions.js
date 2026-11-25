@@ -40,5 +40,7 @@ export async function syncNowAction() {
   if (errorMessage) {
     redirect(`/inventory?error=${encodeURIComponent(errorMessage)}`);
   }
-  redirect(`/inventory?synced=${result?.applied ?? 0}`);
+  redirect(
+    `/inventory?synced=${result?.applied ?? 0}&checked=${result?.orders ?? 0}&old=${result?.beforeCutover ?? 0}`
+  );
 }
