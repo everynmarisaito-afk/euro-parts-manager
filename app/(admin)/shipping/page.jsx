@@ -84,7 +84,7 @@ export default async function ShippingPage({ searchParams }) {
     const res = await listOrders({
       page,
       perPage: 20,
-      status: tab === "pending" ? "processing" : "completed,shipped",
+      status: tab === "pending" ? "processing" : "completed",
       // 未発送は古い注文から、発送済みは新しい順
       order: tab === "pending" ? "asc" : "desc",
     });
@@ -103,7 +103,7 @@ export default async function ShippingPage({ searchParams }) {
           <p className="page-sub">
             {tab === "pending"
               ? `ステータスが「処理中」の注文（${total}件）を古い順に表示`
-              : `ステータスが「完了」「発送済み」の注文（${total}件）`}
+              : `ステータスが「完了」の注文（${total}件）`}
           </p>
         </div>
       </div>
